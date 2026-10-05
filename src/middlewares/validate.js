@@ -1,4 +1,7 @@
 const AppError = require('../utils/AppError');
+const Job = require('../models/Job');
+
+const JOB_TYPES = Job.schema.path('jobType').enumValues; // reuse the model's enum, no duplication
 
 function validateRegister(req, res, next) {
   const { email, password, role, profile } = req.body;
@@ -14,4 +17,18 @@ function validateLogin(req, res, next) {
   next();
 }
 
-module.exports = { validateRegister, validateLogin };
+function validateJob(req, res, next) {
+  const { title, description, location, jobType, salaryRange } = req.body;
+  if (!title?.trim()) return next(new AppError('title is required', 400));
+  if (!description?.trim()) return next(new AppError('description is required', 400));
+  if (!location?.trim()) return next(new AppError('location is required', 400));
+  if (!JOB_TYPES.includes(jobType)) {
+    return next(new AppError(`jobType must be one of: ${JOB_TYPES.join(', ')}`, 400));
+  }
+  if (salaryRange?.min != null && salaryRange?.max != null && salaryRange.min > salaryRange.max) {
+    return next(new AppError('salaryRange.min cannot exceed salaryRange.max', 400));
+  }
+  next();
+}
+
+module.exports = { validateRegister, validateLogin, validateJob };
