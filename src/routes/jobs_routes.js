@@ -19,4 +19,9 @@ router.post(
   applicationsController.apply
 );
 
+router.get('/:id/applications',
+            authenticate, 
+            authorize('EMPLOYER'), 
+            applicationsController.listForJob);
+
 module.exports = router;

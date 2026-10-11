@@ -36,4 +36,12 @@ function requireResume(req, res, next) {
   next();
 }
 
-module.exports = {validateRegister, validateLogin, validateJob, requireResume};
+function validateStatus(req, res, next) {
+  const allowed = ['IN_REVIEW', 'ACCEPTED', 'REJECTED'];
+  if (!allowed.includes(req.body.status)) {
+    return next(new AppError(`status must be one of: ${allowed.join(', ')}`, 400));
+  }
+  next();
+}
+
+module.exports = {validateRegister, validateLogin, validateJob, requireResume, validateStatus};
