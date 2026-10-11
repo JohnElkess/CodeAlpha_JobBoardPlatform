@@ -20,6 +20,13 @@ const jobSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+jobSchema.pre('validate', function () {
+  const { min, max } = this.salaryRange || {};
+  if (min != null && max != null && min > max) {
+    this.invalidate('salaryRange.min', 'salaryRange.min cannot exceed salaryRange.max');
+  }
+});
+
 // Enables keyword search with $text on title + description
 jobSchema.index({ title: 'text', description: 'text' });
 

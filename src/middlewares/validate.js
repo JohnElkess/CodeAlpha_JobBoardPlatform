@@ -2,6 +2,29 @@ const AppError = require('../utils/AppError');
 const Job = require('../models/Job');
 
 const JOB_TYPES = Job.schema.path('jobType').enumValues; // reuse the model's enum, no duplication
+const JOB_STATUSES = Job.schema.path('status').enumValues;
+
+function validateJobUpdate(req, res, next) {
+  const { title, description, location, jobType, salaryRange, status } = req.body;
+  const provided = { title, description, location, jobType, salaryRange, status };
+
+  if (Object.values(provided).every((v) => v === undefined)) {
+    return next(new AppError('Provide at least one field to update', 400));
+  }
+  for (const key of ['title', 'description', 'location']) {
+    const v = provided[key];
+    if (v !== undefined && (typeof v !== 'string' || !v.trim())) {
+      return next(new AppError(`${key} must be a non-empty string`, 400));
+    }
+  }
+  if (jobType !== undefined && !JOB_TYPES.includes(jobType)) {
+    return next(new AppError(`jobType must be one of: ${JOB_TYPES.join(', ')}`, 400));
+  }
+  if (status !== undefined && !JOB_STATUSES.includes(status)) {
+    return next(new AppError(`status must be one of: ${JOB_STATUSES.join(', ')}`, 400));
+  }
+  next();
+}
 
 function validateRegister(req, res, next) {
   const { email, password, role, profile } = req.body;
@@ -44,4 +67,4 @@ function validateStatus(req, res, next) {
   next();
 }
 
-module.exports = {validateRegister, validateLogin, validateJob, requireResume, validateStatus};
+module.exports = { validateRegister, validateLogin, validateJob, validateJobUpdate, requireResume, validateStatus };

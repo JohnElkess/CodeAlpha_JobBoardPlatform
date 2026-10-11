@@ -13,3 +13,16 @@ exports.list = asyncHandler(async (req, res) => {
 exports.getOne = asyncHandler(async (req, res) => {
   res.json(await jobsService.getJobById(req.params.id));
 });
+
+exports.update = asyncHandler(async (req, res) => {
+  res.json(await jobsService.updateJob(req.user.id, req.params.id, req.body));
+});
+
+exports.remove = asyncHandler(async (req, res) => {
+  await jobsService.deleteJob(req.user.id, req.params.id);
+  res.status(204).send(); // success, no body
+});
+
+exports.mine = asyncHandler(async (req, res) => {
+  res.json(await jobsService.getEmployerJobs(req.user.id));
+});

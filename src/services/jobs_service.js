@@ -1,3 +1,5 @@
+const mongoose = require('mongoose');
+const Application = require('../models/Application');
 const Job = require('../models/Job');
 const AppError = require('../utils/AppError');
 
@@ -38,4 +40,51 @@ async function getJobById(id) {
   return job;
 }
 
-module.exports = { createJob, listJobs, getJobById };
+// Shared by update and delete: load the job and enforce ownership
+async function getOwnedJob(employerId, jobId) {
+  const job = await Job.findById(jobId);
+  if (!job) throw new AppError('Job not found', 404);
+  if (job.employer.toString() !== employerId) throw new AppError('Forbidden', 403);
+  return job;
+}
+
+const UPDATABLE = ['title', 'description', 'location', 'jobType', 'salaryRange', 'status'];
+
+async function updateJob(employerId, jobId, data) {
+  const job = await getOwnedJob(employerId, jobId);
+  for (const field of UPDATABLE) {          // whitelist: "employer" can never be reassigned
+    if (data[field] !== undefined) job[field] = data[field];
+  }
+  await job.save();                          // runs schema validation
+  return job;
+}
+
+async function deleteJob(employerId, jobId) {
+  const job = await getOwnedJob(employerId, jobId);
+  if (await Application.exists({ job: job._id })) {
+    throw new AppError('This job has applications. Close it instead of deleting it', 409);
+  }
+  await job.deleteOne();
+}
+
+async function getEmployerJobs(employerId) {
+  const STATUSES = Application.schema.path('status').enumValues;
+
+  // One counting expression per status: how many of this job's applications have that status
+  const statusCounts = Object.fromEntries(
+    STATUSES.map((s) => [
+      s,
+      { $size: { $filter: { input: '$apps', as: 'a', cond: { $eq: ['$$a.status', s] } } } },
+    ])
+  );
+
+  return Job.aggregate([
+    { $match: { employer: new mongoose.Types.ObjectId(employerId) } },
+    { $lookup: { from: 'applications', localField: '_id', foreignField: 'job', as: 'apps' } },
+    { $addFields: { applicationCount: { $size: '$apps' }, statusCounts } },
+    { $project: { apps: 0, description: 0 } },
+    { $sort: { createdAt: -1 } },
+  ]);
+}
+
+module.exports = { createJob, listJobs, getJobById, updateJob, deleteJob, getEmployerJobs };
