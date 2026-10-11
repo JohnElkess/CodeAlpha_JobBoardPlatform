@@ -31,4 +31,9 @@ function validateJob(req, res, next) {
   next();
 }
 
-module.exports = { validateRegister, validateLogin, validateJob };
+function requireResume(req, res, next) {
+  if (!req.file) return next(new AppError('resume file is required (form-data field "resume")', 400));
+  next();
+}
+
+module.exports = {validateRegister, validateLogin, validateJob, requireResume};
