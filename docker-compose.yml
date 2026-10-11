@@ -6,6 +6,26 @@ services:
       - "27017:27017"
     volumes:
       - mongo_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build: .
+    container_name: jobboard-api
+    ports:
+      - "3000:3000"
+    env_file: .env
+    environment:
+      MONGO_URI: mongodb://mongo:27017/jobboard
+    depends_on:
+      mongo:
+        condition: service_healthy
+    volumes:
+      - uploads_data:/app/uploads/resumes
 
 volumes:
   mongo_data:
+  uploads_data:
