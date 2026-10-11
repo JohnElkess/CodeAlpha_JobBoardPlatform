@@ -1,4 +1,5 @@
 require('dotenv').config();
+require('./events/listeners'); // registers the event handlers
 const app = require('./app');
 const connectDB = require('./config/db');
 
