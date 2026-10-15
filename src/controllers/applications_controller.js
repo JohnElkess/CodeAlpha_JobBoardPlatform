@@ -27,3 +27,7 @@ exports.resume = asyncHandler(async (req, res) => {
   const filePath = await applicationsService.getResumePath(req.user, req.params.id);
   res.download(filePath);
 });
+
+exports.withdraw = asyncHandler(async (req, res) => {
+  res.json(await applicationsService.withdrawApplication(req.user.id, req.params.id));
+});

@@ -51,6 +51,7 @@ async function updateStatus(employerId, applicationId, status) {
   const application = await Application.findById(applicationId).populate('job', 'employer title');
   if (!application) throw new AppError('Application not found', 404);
   if (application.job.employer.toString() !== employerId) throw new AppError('Forbidden', 403);
+  if (application.status === 'WITHDRAWN') throw new AppError('This application was withdrawn by the candidate', 409);
 
   if (application.status === status) return application; // no change, so no notification
 
@@ -76,4 +77,18 @@ async function getResumePath(user, applicationId) {
   return absolute;
 }
 
-module.exports = { applyToJob, getMyApplications, getJobApplications, updateStatus, getResumePath };
+async function withdrawApplication(candidateId, applicationId) {
+  const application = await Application.findById(applicationId);
+  if (!application) throw new AppError('Application not found', 404);
+  if (application.candidate.toString() !== candidateId) throw new AppError('Forbidden', 403);
+
+  if (!['APPLIED', 'IN_REVIEW'].includes(application.status)) {
+    throw new AppError(`Cannot withdraw an application that is ${application.status}`, 409);
+  }
+
+  application.status = 'WITHDRAWN';
+  await application.save(); // the model hook records the history entry
+  return application;
+}
+
+module.exports = { applyToJob, getMyApplications, getJobApplications, updateStatus, getResumePath, withdrawApplication };
