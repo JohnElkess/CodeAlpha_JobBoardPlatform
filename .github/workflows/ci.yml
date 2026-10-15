@@ -44,8 +44,17 @@ jobs:
       - name: Build and start the stack
         run: docker compose up -d --build
 
-      - name: Wait for the API and check /health
-        run: curl --fail --silent --retry 20 --retry-delay 3 --retry-connrefused http://localhost:3000/health
+            - name: Wait for the API and check /health
+        run: |
+          for i in $(seq 1 30); do
+            if curl --fail --silent http://localhost:3000/health; then
+              echo; echo "API is up"; exit 0
+            fi
+            echo "waiting for API ($i/30)..."
+            sleep 2
+          done
+          echo "API did not become healthy"
+          exit 1
 
       - name: Show API logs on failure
         if: failure()
