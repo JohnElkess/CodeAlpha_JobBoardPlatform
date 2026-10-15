@@ -1,5 +1,4 @@
 const { ipKeyGenerator } = require('express-rate-limit');
-const ipKey = ipKeyGenerator || ((ip) => ip); // helper exists in newer versions only
 const rateLimit = require('express-rate-limit');
 const AppError = require('../utils/AppError');
 
@@ -22,7 +21,7 @@ const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   limit: 10,
   skipSuccessfulRequests: true,
-  keyGenerator: (req) => `${ipKey(req.ip)}|${String(req.body?.email || '').toLowerCase()}`,
+  keyGenerator: (req) => `${ipKeyGenerator(req.ip)}|${String(req.body?.email || '').toLowerCase()}`,
 });
 
 module.exports = { apiLimiter, authLimiter };
