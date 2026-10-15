@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true   # a new push cancels the older run of the same branch
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Cache the MongoDB binary used by the tests
+        uses: actions/cache@v4
+        with:
+          path: node_modules/.cache/mongodb-memory-server
+          key: mongo-bin-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+
+      - run: npm ci
+      - run: npm test
+
+  docker:
+    needs: test               # only runs if the tests passed
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create .env from the example file
+        run: cp .env.example .env   # compose reads .env, which is git-ignored and absent in CI
+
+      - name: Build and start the stack
+        run: docker compose up -d --build
+
+      - name: Wait for the API and check /health
+        run: curl --fail --silent --retry 20 --retry-delay 3 --retry-connrefused http://localhost:3000/health
+
+      - name: Show API logs on failure
+        if: failure()
+        run: docker compose logs api
+
+      - name: Tear down
+        if: always()
+        run: docker compose down -v
