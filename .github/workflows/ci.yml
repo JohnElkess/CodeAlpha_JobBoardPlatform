@@ -44,7 +44,7 @@ jobs:
       - name: Build and start the stack
         run: docker compose up -d --build
 
-            - name: Wait for the API and check /health
+      - name: Wait for the API and check /health
         run: |
           for i in $(seq 1 30); do
             if curl --fail --silent http://localhost:3000/health; then
