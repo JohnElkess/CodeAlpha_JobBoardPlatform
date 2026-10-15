@@ -2,6 +2,7 @@ const request = require('supertest');
 const fs = require('fs');
 const path = require('path');
 const app = require('../../src/app');
+const User = require('../../src/models/User');
 
 const UPLOAD_DIR = path.join(__dirname, '../../uploads/resumes');
 fs.mkdirSync(UPLOAD_DIR, { recursive: true });
@@ -49,6 +50,14 @@ function apply(token, jobId, file = {}) {
     });
 }
 
+async function createAdmin() {
+  counter += 1;
+  const email = `admin${counter}@test.com`;
+  const user = await User.create({ email, password: 'secret123', role: 'ADMIN', profile: { name: 'Admin' } });
+  const res = await request(app).post('/api/auth/login').send({ email, password: 'secret123' });
+  return { id: user._id.toString(), token: res.body.token, email };
+}
+
 const listUploads = () => fs.readdirSync(UPLOAD_DIR).filter((f) => f !== '.gitkeep');
 
 // Remove only files created during the run, never your own manual test uploads
@@ -58,4 +67,4 @@ function cleanupUploads(before) {
   }
 }
 
-module.exports = { auth, createUser, createJob, jobBody, apply, listUploads, cleanupUploads };
+module.exports = { auth, createUser, createJob, jobBody, apply, listUploads, cleanupUploads, createAdmin };

@@ -1,16 +1,29 @@
 const jwt = require('jsonwebtoken');
 const AppError = require('../utils/AppError');
+const User = require('../models/User');
+
 
 // Link 1: who are you?
-function authenticate(req, res, next) {
+async function authenticate(req, res, next) {
   const [scheme, token] = (req.headers.authorization || '').split(' ');
   if (scheme !== 'Bearer' || !token) return next(new AppError('Authentication required', 401));
+
+  let payload;
   try {
-    const payload = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = { id: payload.id, role: payload.role };
-    next();
+    payload = jwt.verify(token, process.env.JWT_SECRET);
   } catch {
-    next(new AppError('Invalid or expired token', 401));
+    return next(new AppError('Invalid or expired token', 401));
+  }
+
+  try {
+    // One lookup per request: deactivation and role changes apply immediately, not at token expiry
+    const user = await User.findById(payload.id).select('role isActive');
+    if (!user) return next(new AppError('Account no longer exists', 401));
+    if (user.isActive === false) return next(new AppError('Account is deactivated', 403));
+    req.user = { id: user._id.toString(), role: user.role };
+    next();
+  } catch (err) {
+    next(err);
   }
 }
 

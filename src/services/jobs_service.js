@@ -4,7 +4,8 @@ const Job = require('../models/Job');
 const AppError = require('../utils/AppError');
 
 // Escape user input before using it in a regex, so "c++" or ".*" can't break or abuse the query
-const escapeRegex = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const escapeRegex = require('../utils/escape_regex');
+
 
 async function createJob(employerId, data) {
   const { title, description, location, jobType, salaryRange } = data; // explicit fields only

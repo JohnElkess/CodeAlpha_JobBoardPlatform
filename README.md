@@ -12,8 +12,8 @@ Built for CodeAlpha, Task 4 (Job Board Platform).
 - Candidates: search jobs (keyword, location, type, pagination), apply with a resume upload, track applications with a status timeline, withdraw an application
 - Resume uploads stored locally, downloadable only by the applicant and the job's owner
 - Email notifications: employer is notified of a new application, candidate is notified of a status change
-- Interactive API documentation (Swagger UI)
-- 53 automated tests and a CI pipeline
+- Admin: platform-wide statistics and user management (deactivate or reactivate accounts).
+- 66 automated tests and a CI pipeline
 
 ## Tech stack
 
@@ -25,7 +25,6 @@ Built for CodeAlpha, Task 4 (Job Board Platform).
 | Uploads | multer (local disk) |
 | Email | nodemailer (any SMTP provider) |
 | Security | helmet, express-rate-limit, CORS allowlist |
-| Docs | OpenAPI 3 + swagger-ui-express |
 | Tests | Jest, supertest, mongodb-memory-server |
 | Delivery | Docker (multi-stage), Docker Compose, GitHub Actions |
 
@@ -57,6 +56,16 @@ npm install
 npm run dev                 # nodemon, restarts on changes
 ```
 
+### Create the admin account
+
+Set `ADMIN_EMAIL` and `ADMIN_PASSWORD` in `.env`, then run:
+
+```bash
+npm run seed:admin
+# or, with the Docker setup:
+docker compose exec api node src/scripts/seed_admin.js
+```
+
 ### Without SMTP credentials
 
 If `SMTP_HOST` is empty, emails are printed to the console instead of being sent, so the project runs without any mail account. For safe testing with real SMTP behavior, an [Ethereal](https://ethereal.email) fake inbox works with the same settings.
@@ -74,10 +83,9 @@ All settings are environment variables (see `.env.example`).
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS` | SMTP server and credentials |
 | `MAIL_FROM` | Sender shown on emails |
 | `CORS_ORIGIN` | Comma-separated browser origins allowed to call the API. Empty means none |
+| `ADMIN_EMAIL`, `ADMIN_PASSWORD` | Credentials for the admin created by `npm run seed:admin` |
 
 ## API overview
-
-Full details, schemas and a "Try it out" button are in Swagger UI at `/api-docs`. The raw spec is at `/api-docs.json` and can be imported into Postman.
 
 Protected endpoints expect `Authorization: Bearer <token>`.
 
@@ -97,6 +105,9 @@ Protected endpoints expect `Authorization: Bearer <token>`.
 | PATCH | `/api/applications/:id/status` | Owner | Set `IN_REVIEW`, `ACCEPTED` or `REJECTED` |
 | PATCH | `/api/applications/:id/withdraw` | Candidate | Withdraw own application |
 | GET | `/api/applications/:id/resume` | Applicant or owner | Download the resume |
+| GET | `/api/admin/stats` | Admin | Platform-wide statistics |
+| GET | `/api/admin/users` | Admin | List users |
+| PATCH | `/api/admin/users/:id` | Admin | Deactivate or reactivate a user account |
 
 "Owner" means the employer who created the job. Errors are returned as `{ "message": "..." }` with a meaningful status code (400 validation, 401 not authenticated, 403 wrong role or not the owner, 404, 409 conflict, 429 rate limited).
 
@@ -137,6 +148,7 @@ Dependencies only point downward: routes know controllers, controllers know serv
 
 - Passwords hashed with bcrypt; password hash excluded from queries by default
 - Login errors are identical for unknown email and wrong password
+- Every request re-checks the account in the database, so deactivation and role changes apply immediately
 - Role checks plus ownership checks on every employer action (a second employer gets 403 on someone else's job)
 - The employer and candidate ids come from the token, never from the request body; only whitelisted fields are accepted
 - `helmet` security headers, CORS allowlist, rate limits (300 requests per 15 minutes on `/api`; 10 failed login or register attempts per 15 minutes per IP and email)
@@ -151,7 +163,7 @@ Dependencies only point downward: routes know controllers, controllers know serv
 npm test
 ```
 
-53 tests across authentication, jobs and applications. They run against an in-memory MongoDB, so no Docker or database is needed, and no email is sent. They cover role and ownership rules, validation, duplicate handling, orphaned-file cleanup, status history, the dashboard counts and the emitted events.
+66 tests across authentication, jobs and applications. They run against an in-memory MongoDB, so no Docker or database is needed, and no email is sent. They cover role and ownership rules, validation, duplicate handling, orphaned-file cleanup, status history, the dashboard counts and the emitted events.
 
 GitHub Actions runs the tests on every push and pull request, then builds the Docker image, starts the full Compose stack and checks `/health`.
 
@@ -165,4 +177,6 @@ GitHub Actions runs the tests on every push and pull request, then builds the Do
 - **Resumes live on local disk.** That works for a single instance; multiple instances need shared or object storage such as S3.
 - **Keyword search matches whole words** (MongoDB text index with stemming), not substrings.
 - **The OpenAPI spec is hand-written** and must be updated when endpoints change. The `/api-docs` page is public by design here.
+- **Authentication does one database lookup per request.** A cache would remove it at the cost of a delay before deactivation applies.
+- **Deactivating an employer closes their open jobs.** Reactivating the account does not reopen them.
 - **Not included:** refresh tokens, email verification, password reset.

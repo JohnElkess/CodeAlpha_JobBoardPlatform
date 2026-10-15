@@ -6,6 +6,7 @@ const jobsRoutes = require('./routes/jobs_routes');
 const applicationsRoutes = require('./routes/applications_routes');
 const errorHandler = require('./middlewares/errorHandler');
 const { apiLimiter, authLimiter } = require('./middlewares/rate_limiters');
+const adminRoutes = require('./routes/admin_routes');
 
 const app = express();
 
@@ -27,6 +28,7 @@ app.use('/api', apiLimiter);
 app.use('/api/auth', authLimiter, authRoutes);
 app.use('/api/jobs', jobsRoutes);
 app.use('/api/applications', applicationsRoutes);
+app.use('/api/admin', adminRoutes);
 
 app.use(errorHandler); // always last
 

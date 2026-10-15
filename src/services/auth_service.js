@@ -32,6 +32,7 @@ async function login({ email, password }) {
   if (!user || !(await user.comparePassword(password))) {
     throw new AppError('Invalid email or password', 401);
   }
+  if (user.isActive === false) throw new AppError('Account is deactivated', 403);
   return { user: toSafeUser(user), token: signToken(user) };
 }
 

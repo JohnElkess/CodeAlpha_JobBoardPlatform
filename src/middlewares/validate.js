@@ -67,4 +67,9 @@ function validateStatus(req, res, next) {
   next();
 }
 
-module.exports = { validateRegister, validateLogin, validateJob, validateJobUpdate, requireResume, validateStatus };
+function validateUserActive(req, res, next) {
+  if (typeof req.body.isActive !== 'boolean') return next(new AppError('isActive must be true or false', 400));
+  next();
+}
+
+module.exports = { validateRegister, validateLogin, validateJob, validateJobUpdate, requireResume, validateStatus, validateUserActive };
